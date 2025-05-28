@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block style %}
+    <style>
+        .main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            margin: 0 auto;
+        }
+
+        #preview {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+            background-color: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btnBox {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            bottom: 0px;
+            left: 0px;
+            width: 100%;
+            height: 60px;
+            background-color: #eee;
+            border-top: solid 1px #ddd;
+            margin-top: 20px;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: green;
+        }
+
+        #error {
+            margin-top: 20px;
+            font-size: 18px;
+            color: red;
+        }
+    </style>
+    <link rel="stylesheet" href="../static/layui/css/layui.css"/>
+    <script src="../static/js/jquery.min.js"></script>
+    <script src="../static/layui/layui.js"></script>
+{% endblock %}
+{% block name %}
+    图片识别
+{% endblock %}
+{% block content %}
+    <div class="scrollable wrapper">
+        <div class="main">
+            <div id="preview">
+                <img id="imagePreview" src="" alt="Preview" style="max-width: 100%; max-height: 100%; display: none;"/>
+                <span id="placeholder" style="color: gray;">请上传图片进行识别</span>
+            </div>
+            <div style="text-align: center; margin: 20px 0;">
+                <input type="file" id="fileInput" class="layui-btn layui-btn-sm" accept="image/*"/>
+            </div>
+            <div class="btnBox">
+                <button id="upload" class="layui-btn layui-btn-sm"><i class="fa fa-upload"></i> 上传并识别</button>
+            </div>
+            <div id="result"></div>
+            <div id="error"></div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}
+    <script>
+        var layer;
+        layui.use(['layer'], function () {
+            layer = layui.layer;
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById('imagePreview');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    document.getElementById('placeholder').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('upload').addEventListener('click', function () {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                layer.msg('请先选择一张图片进行上传', { icon: 5 });
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            var loading = layer.msg("正在识别图片中，请稍后...", { icon: 16, shade: [0.3, "gray"], time: false });
+
+            $.ajax({
+                method: "POST",
+                url: "/predict",
+                processData: false,
+                contentType: false,
+                data: formData,
+                success: function (data) {
+                    layer.close(loading);
+                    // 清除之前的错误信息
+                    document.getElementById('error').textContent = '';
+                    // 显示识别结果
+                    document.getElementById('result').textContent = "识别结果：" + data.result;
+                },
+                error: function () {
+                    layer.close(loading);
+                    // 清除之前的结果信息
+                    document.getElementById('result').textContent = '';
+                    // 显示错误信息
+                    document.getElementById('error').textContent = "识别过程出现错误，请重试";
+                }
+            });
+        });
+    </script>
+{% endblock %}
